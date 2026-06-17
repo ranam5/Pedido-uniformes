@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pedido de Uniformes</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #1a2f4e; --blue: #1F4E79; --accent: #2e7dbe;
+      --light: #e8f0f9; --success: #2d7a4f; --error: #b91c1c;
+      --gray50: #f8fafc; --gray100: #f1f5f9; --gray200: #e2e8f0;
+      --gray300: #cbd5e1; --gray500: #64748b; --gray700: #334155; --white: #ffffff;
+      --radius: 10px; --shadow: 0 4px 24px rgba(26,47,78,0.10);
+    }
+    body { font-family: 'Inter', sans-serif; background: var(--gray100); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding-bottom: 60px; }
+    header { width: 100%; background: linear-gradient(135deg, var(--navy) 0%, var(--blue) 100%); padding: 32px 24px 28px; text-align: center; position: relative; overflow: hidden; }
+    header::before { content:''; position:absolute; top:-60px; right:-60px; width:220px; height:220px; border-radius:50%; background:rgba(255,255,255,0.05); }
+    .header-icon { font-size: 2.6rem; margin-bottom: 8px; display: block; }
+    header h1 { color: var(--white); font-size: 1.7rem; font-weight: 700; margin-bottom: 5px; }
+    header p { color: rgba(255,255,255,0.72); font-size: 0.9rem; }
+    .card { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow); padding: 32px 28px; width: 100%; max-width: 620px; margin-top: 0; }
+
+    /* STEPS */
+    .steps { display:flex; align-items:center; justify-content:center; margin-bottom:28px; }
+    .step { display:flex; flex-direction:column; align-items:center; gap:5px; }
+    .step-circle { width:30px; height:30px; border-radius:50%; background:var(--gray100); border:2px solid var(--gray300); color:var(--gray500); font-size:0.78rem; font-weight:600; display:flex; align-items:center; justify-content:center; transition:all 0.3s; }
+    .step-circle.active { background:var(--accent); border-color:var(--accent); color:var(--white); }
+    .step-circle.done { background:var(--success); border-color:var(--success); color:var(--white); }
+    .step-label { font-size:0.68rem; color:var(--gray500); font-weight:500; white-space:nowrap; }
+    .step-label.active { color:var(--accent); font-weight:600; }
+    .step-line { flex:1; height:2px; background:var(--gray300); margin:0 6px 18px; max-width:70px; transition:background 0.3s; }
+    .step-line.done { background:var(--success); }
+
+    .section-title { font-size:0.7rem; font-weight:600; text-transform:uppercase; letter-spacing:1px; color:var(--accent); margin-bottom:14px; padding-bottom:7px; border-bottom:1.5px solid var(--light); }
+    .form-group { margin-bottom:16px; }
+    label { display:block; font-size:0.85rem; font-weight:600; color:var(--gray700); margin-bottom:5px; }
+    label span.req { color:var(--accent); }
+    input, select { width:100%; padding:10px 13px; border:1.5px solid var(--gray300); border-radius:8px; font-size:0.92rem; font-family:'Inter',sans-serif; color:var(--gray700); background:var(--white); transition:border-color 0.2s,box-shadow 0.2s; appearance:none; -webkit-appearance:none; }
+    input:focus, select:focus { outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(46,125,190,0.12); }
+    input.error, select.error { border-color:var(--error); }
+    .select-wrapper { position:relative; }
+    .select-wrapper::after { content:'▾'; position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--gray500); pointer-events:none; }
+    .field-error { font-size:0.75rem; color:var(--error); margin-top:4px; display:none; }
+    .field-error.show { display:block; }
+    .row-2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+
+    /* SEARCH INPUT */
+    .search-box { position:relative; margin-bottom:8px; }
+    .search-box input { padding-left:34px; }
+    .search-box::before { content:'🔍'; position:absolute; left:10px; top:50%; transform:translateY(-50%); font-size:0.85rem; pointer-events:none; }
+
+    /* CATALOG */
+    .catalog-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; max-height:320px; overflow-y:auto; border:1.5px solid var(--gray200); border-radius:8px; padding:10px; background:var(--gray50); }
+    .catalog-grid::-webkit-scrollbar { width:6px; }
+    .catalog-grid::-webkit-scrollbar-track { background:var(--gray100); border-radius:3px; }
+    .catalog-grid::-webkit-scrollbar-thumb { background:var(--gray300); border-radius:3px; }
+    .cat-item { display:flex; align-items:flex-start; gap:8px; padding:8px 10px; border:1.5px solid var(--gray200); border-radius:7px; cursor:pointer; transition:all 0.15s; background:var(--white); user-select:none; }
+    .cat-item:hover { border-color:var(--accent); background:var(--light); }
+    .cat-item.selected { border-color:var(--accent); background:var(--light); }
+    .cat-item input[type=checkbox] { margin-top:2px; accent-color:var(--accent); width:15px; height:15px; flex-shrink:0; cursor:pointer; }
+    .cat-item-info { flex:1; min-width:0; }
+    .cat-item-name { font-size:0.78rem; font-weight:600; color:var(--gray700); line-height:1.3; }
+    .cat-item-code { font-size:0.68rem; color:var(--gray500); font-family:monospace; margin-top:2px; }
+    .cat-qty { display:flex; align-items:center; gap:4px; margin-top:5px; }
+    .cat-qty button { width:20px; height:20px; border:1.5px solid var(--gray300); background:var(--white); border-radius:4px; font-size:0.85rem; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; color:var(--gray700); transition:background 0.1s; }
+    .cat-qty button:hover { background:var(--gray100); }
+    .cat-qty span { font-size:0.8rem; font-weight:600; color:var(--gray700); min-width:16px; text-align:center; }
+    .no-results { grid-column:1/-1; text-align:center; padding:24px; color:var(--gray500); font-size:0.85rem; }
+
+    /* CATEGORY TABS */
+    .cat-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+    .cat-tab { padding:5px 12px; border-radius:20px; border:1.5px solid var(--gray300); background:var(--white); font-size:0.75rem; font-weight:600; color:var(--gray500); cursor:pointer; transition:all 0.15s; white-space:nowrap; }
+    .cat-tab.active { background:var(--accent); border-color:var(--accent); color:var(--white); }
+
+    /* SELECTED ITEMS */
+    .selected-list { margin-top:12px; }
+    .selected-header { font-size:0.75rem; font-weight:600; color:var(--gray500); margin-bottom:8px; display:flex; justify-content:space-between; align-items:center; }
+    .selected-badge { background:var(--accent); color:var(--white); border-radius:12px; padding:2px 8px; font-size:0.7rem; }
+    .selected-item { display:flex; align-items:center; justify-content:space-between; padding:7px 10px; background:var(--light); border:1px solid #c5d9ef; border-radius:7px; margin-bottom:5px; }
+    .selected-item-info { font-size:0.78rem; color:var(--gray700); font-weight:500; }
+    .selected-item-code { font-size:0.68rem; color:var(--gray500); font-family:monospace; }
+    .selected-item-qty { font-size:0.78rem; font-weight:700; color:var(--accent); margin:0 8px; }
+    .btn-remove { background:none; border:none; color:var(--gray500); cursor:pointer; font-size:1rem; padding:0 2px; line-height:1; transition:color 0.15s; }
+    .btn-remove:hover { color:var(--error); }
+    .empty-selection { text-align:center; padding:16px; color:var(--gray500); font-size:0.82rem; background:var(--gray50); border-radius:7px; border:1.5px dashed var(--gray300); }
+
+    /* BUTTONS */
+    .btn-submit { width:100%; padding:13px; background:linear-gradient(135deg,var(--blue),var(--accent)); color:var(--white); border:none; border-radius:8px; font-size:0.95rem; font-weight:600; font-family:'Inter',sans-serif; cursor:pointer; transition:opacity 0.2s,transform 0.1s; margin-top:6px; display:flex; align-items:center; justify-content:center; gap:8px; }
+    .btn-submit:hover { opacity:0.92; }
+    .btn-submit:active { transform:scale(0.99); }
+    .btn-submit:disabled { opacity:0.6; cursor:not-allowed; }
+    .btn-back { display:inline-flex; align-items:center; padding:10px 20px; background:var(--light); color:var(--blue); border:1.5px solid var(--accent); border-radius:8px; font-size:0.88rem; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; transition:background 0.2s; white-space:nowrap; }
+    .btn-back:hover { background:#d0e4f5; }
+    .btn-row { display:flex; gap:10px; margin-top:6px; }
+
+    /* RESUMEN */
+    .resumen-empleado { background:var(--gray50); border:1.5px solid var(--gray200); border-radius:8px; padding:14px 16px; margin-bottom:16px; }
+    .resumen-row { display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid var(--gray200); font-size:0.87rem; }
+    .resumen-row:last-child { border-bottom:none; }
+    .resumen-row span:first-child { color:var(--gray500); font-weight:500; }
+    .resumen-row span:last-child { color:var(--gray700); font-weight:600; }
+    .resumen-items { border:1.5px solid var(--gray200); border-radius:8px; overflow:hidden; }
+    .resumen-item { display:flex; justify-content:space-between; align-items:center; padding:9px 14px; border-bottom:1px solid var(--gray200); font-size:0.84rem; }
+    .resumen-item:last-child { border-bottom:none; }
+    .resumen-item:nth-child(even) { background:var(--gray50); }
+
+    /* SUCCESS */
+    #success-screen { display:none; text-align:center; padding:20px 0 10px; }
+    .success-icon { font-size:3.5rem; margin-bottom:14px; display:block; animation:pop 0.4s cubic-bezier(0.34,1.56,0.64,1); }
+    @keyframes pop { from{transform:scale(0.5);opacity:0}to{transform:scale(1);opacity:1} }
+    #success-screen h2 { font-size:1.35rem; color:var(--navy); margin-bottom:7px; }
+    #success-screen p { color:var(--gray500); font-size:0.9rem; margin-bottom:24px; line-height:1.6; }
+
+    .spinner { width:17px; height:17px; border:2px solid rgba(255,255,255,0.4); border-top-color:white; border-radius:50%; animation:spin 0.7s linear infinite; display:none; }
+    @keyframes spin { to{transform:rotate(360deg)} }
+    .footer-note { text-align:center; color:var(--gray500); font-size:0.75rem; margin-top:16px; }
+
+    @media(max-width:600px){
+      .card{padding:22px 14px;border-radius:0;box-shadow:none;}
+      .row-2{grid-template-columns:1fr;}
+      .catalog-grid{grid-template-columns:1fr;}
+      .cat-tabs{gap:4px;}
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="header-icon">👕</span>
+  <h1>Pedido de Uniformes</h1>
+  <p>Completá el formulario para registrar tu solicitud</p>
+</header>
+
+<div class="card">
+  <div class="steps">
+    <div class="step"><div class="step-circle active" id="s1">1</div><span class="step-label active">Empleado</span></div>
+    <div class="step-line" id="line1"></div>
+    <div class="step"><div class="step-circle" id="s2">2</div><span class="step-label">Artículos</span></div>
+    <div class="step-line" id="line2"></div>
+    <div class="step"><div class="step-circle" id="s3">3</div><span class="step-label">Confirmar</span></div>
+  </div>
+
+  <form id="uniform-form" novalidate>
+
+    <!-- STEP 1 -->
+    <div id="step1">
+      <div class="section-title">Datos del Empleado</div>
+      <div class="row-2">
+        <div class="form-group">
+          <label for="legajo">Legajo <span class="req">*</span></label>
+          <input type="text" id="legajo" placeholder="Ej: 12345" inputmode="numeric" />
+          <div class="field-error" id="err-legajo">Ingresá el número de legajo</div>
+        </div>
+        <div class="form-group">
+          <label for="dni">DNI <span class="req">*</span></label>
+          <input type="text" id="dni" placeholder="Ej: 30123456" inputmode="numeric" />
+          <div class="field-error" id="err-dni">Ingresá un DNI válido (7-8 dígitos)</div>
+        </div>
+      </div>
+      <div class="row-2">
+        <div class="form-group">
+          <label for="nombre">Nombre <span class="req">*</span></label>
+          <input type="text" id="nombre" placeholder="Tu nombre" />
+          <div class="field-error" id="err-nombre">Ingresá tu nombre</div>
+        </div>
+        <div class="form-group">
+          <label for="apellido">Apellido <span class="req">*</span></label>
+          <input type="text" id="apellido" placeholder="Tu apellido" />
+          <div class="field-error" id="err-apellido">Ingresá tu apellido</div>
+        </div>
+      </div>
+      <button type="button" class="btn-submit" onclick="goStep2()">Continuar → Seleccionar artículos</button>
+    </div>
+
+    <!-- STEP 2 -->
+    <div id="step2" style="display:none;">
+      <div class="section-title">Seleccioná los artículos del pedido</div>
+
+      <div class="cat-tabs" id="cat-tabs"></div>
+
+      <div class="search-box">
+        <input type="text" id="search-input" placeholder="Buscar por nombre o código..." oninput="filterCatalog()" />
+      </div>
+
+      <div class="catalog-grid" id="catalog-grid"></div>
+
+      <div class="selected-list">
+        <div class="selected-header">
+          <span>Artículos seleccionados</span>
+          <span class="selected-badge" id="selected-count">0</span>
+        </div>
+        <div id="selected-items-list"><div class="empty-selection">Aún no seleccionaste ningún artículo</div></div>
+      </div>
+      <div class="field-error show" id="err-items" style="display:none!important;"></div>
+
+      <div class="btn-row">
+        <button type="button" class="btn-back" onclick="goStep1()">← Volver</button>
+        <button type="button" class="btn-submit" onclick="goStep3()">Revisar pedido →</button>
+      </div>
+    </div>
+
+    <!-- STEP 3 -->
+    <div id="step3" style="display:none;">
+      <div class="section-title">Revisá tu pedido antes de confirmar</div>
+      <div class="resumen-empleado" id="resumen-empleado"></div>
+      <div style="font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:var(--accent);margin-bottom:8px;">Artículos solicitados</div>
+      <div class="resumen-items" id="resumen-items"></div>
+      <div class="btn-row" style="margin-top:20px;">
+        <button type="button" class="btn-back" onclick="goStep2()">← Editar</button>
+        <button type="submit" class="btn-submit" id="btn-enviar">
+          <span id="btn-text">✅ Confirmar pedido</span>
+          <div class="spinner" id="spinner"></div>
+        </button>
+      </div>
+    </div>
+  </form>
+
+  <div id="success-screen">
+    <span class="success-icon">🎉</span>
+    <h2>¡Pedido registrado!</h2>
+    <p>Tu solicitud fue enviada correctamente.<br>El área de RRHH la procesará a la brevedad.</p>
+    <button class="btn-back" onclick="resetForm()" style="margin:0 auto;">Cargar otro pedido</button>
+  </div>
+
+  <div class="footer-note">Todos los campos marcados con <span style="font-weight:700">*</span> son obligatorios</div>
+</div>
+
+<script>
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwkKQ-PS66Z7sSScZOJEhwavu0JWlD7WKU6HLQnyuUvr9OHt_donPu-a5szVK9gt9KW/exec";
+
+const CATALOG = [
+  {code:"INALI000001",name:"AMBO AZUL LIMPIEZA TALLE S",cat:"Ambo"},
+  {code:"INALI000002",name:"AMBO AZUL LIMPIEZA TALLE M",cat:"Ambo"},
+  {code:"INALI000003",name:"AMBO AZUL LIMPIEZA TALLE L",cat:"Ambo"},
+  {code:"INALI000004",name:"AMBO AZUL LIMPIEZA TALLE XL",cat:"Ambo"},
+  {code:"INALI000005",name:"AMBO AZUL LIMPIEZA TALLE XXL",cat:"Ambo"},
+  {code:"INALI000006",name:"AMBO AZUL LIMPIEZA T ESPECIAL",cat:"Ambo"},
+  {code:"INPAM000000",name:"PANTALON SEGURIDAD TALLE 38",cat:"Pantalón"},
+  {code:"INPAM000001",name:"PANTALON SEGURIDAD TALLE 40",cat:"Pantalón"},
+  {code:"INPAM000002",name:"PANTALON SEGURIDAD TALLE 42",cat:"Pantalón"},
+  {code:"INPAM000003",name:"PANTALON SEGURIDAD TALLE 44",cat:"Pantalón"},
+  {code:"INPAM000004",name:"PANTALON SEGURIDAD TALLE 46",cat:"Pantalón"},
+  {code:"INPAM000005",name:"PANTALON SEGURIDAD TALLE 48",cat:"Pantalón"},
+  {code:"INPAM000006",name:"PANTALON SEGURIDAD TALLE 50",cat:"Pantalón"},
+  {code:"INPAM000007",name:"PANTALON SEGURIDAD TALLE 52",cat:"Pantalón"},
+  {code:"INPAM000008",name:"PANTALON SEGURIDAD TALLE 54",cat:"Pantalón"},
+  {code:"INPAM000009",name:"PANTALON SEGURIDAD TALLE 56",cat:"Pantalón"},
+  {code:"INPAM000010",name:"PANTALON SEGURIDAD TALLE 58",cat:"Pantalón"},
+  {code:"INPAM000011",name:"PANTALON GRAFA AZUL T 40",cat:"Pantalón"},
+  {code:"INPAM000012",name:"PANTALON GRAFA AZUL T 42",cat:"Pantalón"},
+  {code:"INPAM000013",name:"PANTALON GRAFA AZUL T 44",cat:"Pantalón"},
+  {code:"INPAM000014",name:"PANTALON GRAFA AZUL T 46",cat:"Pantalón"},
+  {code:"INPAM000015",name:"PANTALON GRAFA AZUL T 48",cat:"Pantalón"},
+  {code:"INPAM000016",name:"PANTALON GRAFA AZUL T 50",cat:"Pantalón"},
+  {code:"INPAM000017",name:"PANTALON GRAFA AZUL T 52",cat:"Pantalón"},
+  {code:"INPAM000018",name:"PANTALON GRAFA AZUL T 54",cat:"Pantalón"},
+  {code:"INPAM000019",name:"PANTALON GRAFA AZUL T 56",cat:"Pantalón"},
+  {code:"INPAM000020",name:"PANTALON GRAFA AZUL T 58",cat:"Pantalón"},
+  {code:"INPAM000021",name:"PANTALON GRAFA BEIGE T 40",cat:"Pantalón"},
+  {code:"INPAM000022",name:"PANTALON GRAFA BEIGE T 42",cat:"Pantalón"},
+  {code:"INPAM000023",name:"PANTALON GRAFA BEIGE T 44",cat:"Pantalón"},
+  {code:"INPAM000024",name:"PANTALON GRAFA BEIGE T 46",cat:"Pantalón"},
+  {code:"INPAM000025",name:"PANTALON GRAFA BEIGE T 48",cat:"Pantalón"},
+  {code:"INPAM000026",name:"PANTALON GRAFA BEIGE T 50",cat:"Pantalón"},
+  {code:"INPAM000027",name:"PANTALON GRAFA BEIGE T 52",cat:"Pantalón"},
+  {code:"INPAM000028",name:"PANTALON GRAFA BEIGE T 54",cat:"Pantalón"},
+  {code:"INPAM000029",name:"PANTALON GRAFA BEIGE T 56",cat:"Pantalón"},
+  {code:"INPAM000030",name:"PANTALON GRAFA BEIGE T 58",cat:"Pantalón"},
+  {code:"INPAM000032",name:"PANTALON SEGURIDAD TALLE 36",cat:"Pantalón"},
+  {code:"INPAM000034",name:"PANTALON SEGURIDAD TALLE 60",cat:"Pantalón"},
+  {code:"INPAM000035",name:"PANTALON SEGURIDAD TALLE 62",cat:"Pantalón"},
+  {code:"INPAM000044",name:"PANTALON SEGURIDAD TALLE 68",cat:"Pantalón"},
+  {code:"INPAM000045",name:"PANTALON SEGURIDAD TALLE 70",cat:"Pantalón"},
+  {code:"INPAM000046",name:"PANTALON GRAFA AZUL TALLE 60",cat:"Pantalón"},
+  {code:"INPAM000047",name:"PANTALON GRAFA AZUL TALLE 62",cat:"Pantalón"},
+  {code:"INPAM000048",name:"PANTALON GRAFA BEIGE TALLE 60",cat:"Pantalón"},
+  {code:"INPAM000059",name:"PANTALON SEGURIDAD TALLE 72",cat:"Pantalón"},
+  {code:"INPAM000060",name:"PANTALON SEGURIDAD TALLE 64",cat:"Pantalón"},
+  {code:"INPAM000065",name:"PANTALON GRAFA BEIGE TALLE 62",cat:"Pantalón"},
+  {code:"INCAM000001",name:"CAMISA MANGA LARGA T 40",cat:"Camisa"},
+  {code:"INCAM000002",name:"CAMISA MANGA LARGA T 42",cat:"Camisa"},
+  {code:"INCAM000003",name:"CAMISA MANGA LARGA T 44",cat:"Camisa"},
+  {code:"INCAM000004",name:"CAMISA MANGA LARGA T 46",cat:"Camisa"},
+  {code:"INCAM000005",name:"CAMISA MANGA LARGA T 48",cat:"Camisa"},
+  {code:"INCAM000006",name:"CAMISA MANGA LARGA T 50",cat:"Camisa"},
+  {code:"INCAM000007",name:"CAMISA MANGA LARGA T 52",cat:"Camisa"},
+  {code:"INCAM000008",name:"CAMISA MANGA LARGA T 54",cat:"Camisa"},
+  {code:"INCAM000009",name:"CAMISA MANGA LARGA T 56",cat:"Camisa"},
+  {code:"INCAM000010",name:"CAMISA MANGA LARGA T 58",cat:"Camisa"},
+  {code:"INCAM000011",name:"CAMISA MANGA CORTA T 36",cat:"Camisa"},
+  {code:"INCAM000012",name:"CAMISA MANGA CORTA T 38",cat:"Camisa"},
+  {code:"INCAM000013",name:"CAMISA MANGA CORTA T 40",cat:"Camisa"},
+  {code:"INCAM000014",name:"CAMISA MANGA CORTA T 42",cat:"Camisa"},
+  {code:"INCAM000015",name:"CAMISA MANGA CORTA T 44",cat:"Camisa"},
+  {code:"INCAM000016",name:"CAMISA MANGA CORTA T 46",cat:"Camisa"},
+  {code:"INCAM000017",name:"CAMISA MANGA CORTA T 48",cat:"Camisa"},
+  {code:"INCAM000018",name:"CAMISA MANGA CORTA T 50",cat:"Camisa"},
+  {code:"INCAM000019",name:"CAMISA MANGA CORTA T 52",cat:"Camisa"},
+  {code:"INCAM000020",name:"CAMISA MANGA CORTA T 54",cat:"Camisa"},
+  {code:"INCAM000021",name:"CAMISA MANGA CORTA T 56",cat:"Camisa"},
+  {code:"INCAG000001",name:"CAMISA GRAFA BEIGE T 40",cat:"Camisa"},
+  {code:"INCAG000002",name:"CAMISA GRAFA BEIGE T 42",cat:"Camisa"},
+  {code:"INCAG000003",name:"CAMISA GRAFA BEIGE T 44",cat:"Camisa"},
+  {code:"INCAG000004",name:"CAMISA GRAFA BEIGE T 46",cat:"Camisa"},
+  {code:"INCAG000005",name:"CAMISA GRAFA BEIGE T 48",cat:"Camisa"},
+  {code:"INCAG000006",name:"CAMISA GRAFA BEIGE T 50",cat:"Camisa"},
+  {code:"INCAG000007",name:"CAMISA GRAFA BEIGE T 52",cat:"Camisa"},
+  {code:"INCAG000008",name:"CAMISA GRAFA BEIGE T 54",cat:"Camisa"},
+  {code:"INCAG000009",name:"CAMISA GRAFA BEIGE T 56",cat:"Camisa"},
+  {code:"INCAG000010",name:"CAMISA GRAFA BEIGE T 58",cat:"Camisa"},
+  {code:"INCAG000011",name:"CAMISA GRAFA AZUL T 40",cat:"Camisa"},
+  {code:"INCAG000012",name:"CAMISA GRAFA AZUL T 42",cat:"Camisa"},
+  {code:"INCAG000013",name:"CAMISA GRAFA AZUL T 44",cat:"Camisa"},
+  {code:"INCAG000014",name:"CAMISA GRAFA AZUL T 46",cat:"Camisa"},
+  {code:"INCAG000015",name:"CAMISA GRAFA AZUL T 48",cat:"Camisa"},
+  {code:"INCAG000016",name:"CAMISA GRAFA AZUL T 50",cat:"Camisa"},
+  {code:"INCAG000017",name:"CAMISA GRAFA AZUL T 52",cat:"Camisa"},
+  {code:"INCAG000018",name:"CAMISA GRAFA AZUL T 54",cat:"Camisa"},
+  {code:"INCAG000019",name:"CAMISA GRAFA AZUL T 56",cat:"Camisa"},
+  {code:"INCAG000020",name:"CAMISA GRAFA AZUL T 58",cat:"Camisa"},
+  {code:"INCAG000021",name:"CAMISA GRAFA AZUL T 38",cat:"Camisa"},
+  {code:"INCAP000002",name:"CAMPERA NEGRA SEGURIDAD T S",cat:"Campera"},
+  {code:"INCAP000003",name:"CAMPERA NEGRA SEGURIDAD T M",cat:"Campera"},
+  {code:"INCAP000004",name:"CAMPERA NEGRA SEGURIDAD T L",cat:"Campera"},
+  {code:"INCAP000005",name:"CAMPERA NEGRA SEGURIDAD T XL",cat:"Campera"},
+  {code:"INCAP000006",name:"CAMPERA NEGRA SEGURIDAD T XXL",cat:"Campera"},
+  {code:"INCAP000007",name:"CAMPERA NEGRA SEGURIDAD T XXXL",cat:"Campera"},
+  {code:"INPOL000004",name:"POLAR AZUL LIMPIEZA TALLE S",cat:"Polar"},
+  {code:"INPOL000005",name:"POLAR AZUL LIMPIEZA TALLE M",cat:"Polar"},
+  {code:"INPOL000006",name:"POLAR AZUL LIMPIEZA TALLE L",cat:"Polar"},
+  {code:"INPOL000007",name:"POLAR AZUL LIMPIEZA TALLE XL",cat:"Polar"},
+  {code:"INPOL000008",name:"POLAR AZUL LIMPIEZA TALLE XXL",cat:"Polar"},
+  {code:"INPOL000011",name:"POLAR VERDE ELECTR TALLE S",cat:"Polar"},
+  {code:"INPOL000012",name:"POLAR VERDE ELECTR TALLE L",cat:"Polar"},
+  {code:"INPOL000013",name:"POLAR VERDE ELECTR TALLE M",cat:"Polar"},
+  {code:"INPOL000014",name:"POLAR VERDE ELECTR TALLE XL",cat:"Polar"},
+  {code:"INPOL000015",name:"POLAR VERDE ELECTR TALLE XXL",cat:"Polar"},
+  {code:"INPOL000022",name:"POLAR AZUL LIMPIEZA TALLE XXXL",cat:"Polar"},
+  {code:"INREM000001",name:"REMERA GRIS ELECTRO TALLE S",cat:"Remera"},
+  {code:"INREM000002",name:"REMERA GRIS ELECTRO TALLE L",cat:"Remera"},
+  {code:"INREM000003",name:"REMERA GRIS ELECTRO TALLE M",cat:"Remera"},
+  {code:"INREM000004",name:"REMERA GRIS ELECTRO TALLE XL",cat:"Remera"},
+  {code:"INREM000005",name:"REMERA GRIS ELECTRO TALLE XXL",cat:"Remera"},
+  {code:"INTRI000001",name:"TRICOTA NEGRO SEGURIDAD T: S",cat:"Tricota"},
+  {code:"INTRI000002",name:"TRICOTA NEGRO SEGURIDAD T: M",cat:"Tricota"},
+  {code:"INTRI000003",name:"TRICOTA NEGRO SEGURIDAD T: L",cat:"Tricota"},
+  {code:"INTRI000004",name:"TRICOTA NEGRO SEGURIDAD T: XL",cat:"Tricota"},
+  {code:"INTRI000005",name:"TRICOTA NEGRO SEGURIDAD T:XXL",cat:"Tricota"},
+  {code:"INTRI000012",name:"TRICOTA NEGRO SEGURIDAD XXXL",cat:"Tricota"},
+  {code:"INTRI000013",name:"TRICOTA NEGRO SEGURIDAD XXXXL",cat:"Tricota"},
+  {code:"INCIN000002",name:"CINTO DE SEGURIDAD NATO",cat:"Accesorios"},
+  {code:"INZAP000001",name:"ZAPATO SEGURIDAD NUMERO 36",cat:"Calzado"},
+  {code:"INZAP000002",name:"ZAPATO SEGURIDAD NUMERO 37",cat:"Calzado"},
+  {code:"INZAP000003",name:"ZAPATO SEGURIDAD NUMERO 38",cat:"Calzado"},
+  {code:"INZAP000004",name:"ZAPATO SEGURIDAD NUMERO 39",cat:"Calzado"},
+  {code:"INZAP000005",name:"ZAPATO SEGURIDAD NUMERO 40",cat:"Calzado"},
+  {code:"INZAP000006",name:"ZAPATO SEGURIDAD NUMERO 41",cat:"Calzado"},
+  {code:"INZAP000007",name:"ZAPATO SEGURIDAD NUMERO 42",cat:"Calzado"},
+  {code:"INZAP000008",name:"ZAPATO SEGURIDAD NUMERO 43",cat:"Calzado"},
+  {code:"INZAP000009",name:"ZAPATO SEGURIDAD NUMERO 44",cat:"Calzado"},
+  {code:"INZAP000010",name:"ZAPATO SEGURIDAD NUMERO 45",cat:"Calzado"},
+  {code:"INZAP000011",name:"ZAPATO SEGURIDAD NUMERO 46",cat:"Calzado"},
+  {code:"INZAP000017",name:"BOTIN COMUN C/P Nº 40",cat:"Calzado"},
+  {code:"INZAP000018",name:"BOTIN COMUN C/P Nº 41",cat:"Calzado"},
+  {code:"INZAP000019",name:"BOTIN COMUN C/P Nº 42",cat:"Calzado"},
+  {code:"INZAP000020",name:"BOTIN COMUN C/P Nº 43",cat:"Calzado"},
+  {code:"INZAP000021",name:"BOTIN COMUN C/P Nº 44",cat:"Calzado"},
+  {code:"INZAP000022",name:"BOTIN COMUN C/P Nº 45",cat:"Calzado"},
+  {code:"INZAP000029",name:"ZAPATO SEGURIDAD NUMERO 47",cat:"Calzado"},
+  {code:"INZAP000030",name:"ZAPATO SEGURIDAD NUMERO 25",cat:"Calzado"},
+  {code:"INCOR000001",name:"CORBATA SEGURIDAD COLOR NEGRO",cat:"Accesorios"},
+  {code:"INGOR000001",name:"GORRA SEGURIDAD NEGRA C/LOGO",cat:"Accesorios"},
+  {code:"SEGEL000021",name:"CAPA LLUVIA AMARILLA T:XXL",cat:"Accesorios"},
+  {code:"PALIMP000073",name:"DELANTAL PVC VERDE DESMALEZ",cat:"Accesorios"},
+  {code:"PALIMP000057",name:"ANTEOJO TRANSP SEGURIDAD",cat:"EPP"},
+  {code:"EIINS000053",name:"CASCO DE SEGURIDAD",cat:"EPP"},
+  {code:"PAVIG000009",name:"LINTERNA RECRGABLE 19 LED",cat:"EPP"},
+  {code:"EIINS000089",name:"CHALECO REFLECTIVO SEGURIDAD",cat:"EPP"},
+  {code:"PALIMP000169",name:"GUANTE GOMA COMUN",cat:"EPP"},
+  {code:"SEGEL000015",name:"GUANTE FIBRA CON PUNTO GOMA",cat:"EPP"},
+];
+
+const CATEGORIES = ['Todos', ...new Set(CATALOG.map(i => i.cat))];
+let activeCategory = 'Todos';
+let selected = {}; // code -> {item, qty}
+
+// Build category tabs
+const tabsEl = document.getElementById('cat-tabs');
+CATEGORIES.forEach(cat => {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'cat-tab' + (cat === 'Todos' ? ' active' : '');
+  btn.textContent = cat;
+  btn.onclick = () => {
+    activeCategory = cat;
+    document.querySelectorAll('.cat-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('search-input').value = '';
+    renderCatalog();
+  };
+  tabsEl.appendChild(btn);
+});
+
+function renderCatalog() {
+  const search = document.getElementById('search-input').value.toLowerCase().trim();
+  const grid = document.getElementById('catalog-grid');
+  let items = CATALOG;
+  if (activeCategory !== 'Todos') items = items.filter(i => i.cat === activeCategory);
+  if (search) items = items.filter(i => i.name.toLowerCase().includes(search) || i.code.toLowerCase().includes(search));
+
+  if (items.length === 0) {
+    grid.innerHTML = '<div class="no-results">No se encontraron artículos</div>';
+    return;
+  }
+
+  grid.innerHTML = items.map(item => {
+    const sel = selected[item.code];
+    const qty = sel ? sel.qty : 1;
+    return `
+    <div class="cat-item ${sel ? 'selected' : ''}" id="ci-${item.code}" onclick="toggleItem('${item.code}')">
+      <input type="checkbox" ${sel ? 'checked' : ''} onclick="event.stopPropagation();toggleItem('${item.code}')" />
+      <div class="cat-item-info">
+        <div class="cat-item-name">${item.name}</div>
+        <div class="cat-item-code">${item.code}</div>
+        ${sel ? `<div class="cat-qty" onclick="event.stopPropagation()">
+          <button onclick="changeQty('${item.code}',-1)">−</button>
+          <span>${qty}</span>
+          <button onclick="changeQty('${item.code}',1)">+</button>
+        </div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filterCatalog() {
+  // reset category to Todos when searching
+  if (document.getElementById('search-input').value) {
+    activeCategory = 'Todos';
+    document.querySelectorAll('.cat-tab').forEach(b => b.classList.remove('active'));
+    document.querySelector('.cat-tab').classList.add('active');
+  }
+  renderCatalog();
+}
+
+function toggleItem(code) {
+  const item = CATALOG.find(i => i.code === code);
+  if (selected[code]) {
+    delete selected[code];
+  } else {
+    selected[code] = { item, qty: 1 };
+  }
+  renderCatalog();
+  renderSelected();
+}
+
+function changeQty(code, delta) {
+  if (!selected[code]) return;
+  selected[code].qty = Math.max(1, selected[code].qty + delta);
+  renderCatalog();
+  renderSelected();
+}
+
+function renderSelected() {
+  const list = document.getElementById('selected-items-list');
+  const count = Object.keys(selected).length;
+  document.getElementById('selected-count').textContent = count;
+
+  if (count === 0) {
+    list.innerHTML = '<div class="empty-selection">Aún no seleccionaste ningún artículo</div>';
+    return;
+  }
+
+  list.innerHTML = Object.values(selected).map(({item, qty}) => `
+    <div class="selected-item">
+      <div>
+        <div class="selected-item-info">${item.name}</div>
+        <div class="selected-item-code">${item.code}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px;">
+        <span class="selected-item-qty">x${qty}</span>
+        <button class="btn-remove" onclick="toggleItem('${item.code}')" title="Quitar">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+renderCatalog();
+
+// NAVIGATION
+function setStep(n) {
+  [1,2,3].forEach(i => {
+    document.getElementById(`step${i}`).style.display = i===n?'block':'none';
+    const c = document.getElementById(`s${i}`);
+    c.classList.remove('active','done');
+    if(i<n){c.classList.add('done');c.textContent='✓';}
+    else if(i===n){c.classList.add('active');c.textContent=i;}
+    else{c.textContent=i;}
+    if(i<3){document.getElementById(`line${i}`).classList.toggle('done',i<n);}
+  });
+  document.querySelectorAll('.step-label').forEach((el,idx)=>el.classList.toggle('active',idx+1===n));
+}
+
+function showErr(id,show){
+  const inp=document.getElementById(id),err=document.getElementById('err-'+id);
+  inp.classList.toggle('error',show); err.style.display=show?'block':'none';
+}
+function val(id){return document.getElementById(id).value.trim();}
+
+function goStep1(){setStep(1);}
+function goStep2(){
+  let ok=true;
+  if(!val('legajo')||!/^\d+$/.test(val('legajo'))){showErr('legajo',true);ok=false;}else showErr('legajo',false);
+  if(!val('dni')||!/^\d{7,8}$/.test(val('dni'))){showErr('dni',true);ok=false;}else showErr('dni',false);
+  if(!val('nombre')){showErr('nombre',true);ok=false;}else showErr('nombre',false);
+  if(!val('apellido')){showErr('apellido',true);ok=false;}else showErr('apellido',false);
+  if(ok)setStep(2);
+}
+
+function goStep3(){
+  if(Object.keys(selected).length===0){
+    alert('⚠️ Seleccioná al menos un artículo para continuar.');
+    return;
+  }
+  // Render resumen empleado
+  document.getElementById('resumen-empleado').innerHTML = [
+    ['Legajo',val('legajo')],['DNI',val('dni')],
+    ['Nombre',val('nombre')+' '+val('apellido')]
+  ].map(([k,v])=>`<div class="resumen-row"><span>${k}</span><span>${v}</span></div>`).join('');
+
+  // Render resumen items
+  document.getElementById('resumen-items').innerHTML = Object.values(selected).map(({item,qty})=>`
+    <div class="resumen-item">
+      <div>
+        <div style="font-weight:600;color:var(--gray700);font-size:0.84rem;">${item.name}</div>
+        <div style="font-size:0.7rem;color:var(--gray500);font-family:monospace;">${item.code}</div>
+      </div>
+      <span style="font-weight:700;color:var(--accent);font-size:0.88rem;">x${qty}</span>
+    </div>`).join('');
+
+  setStep(3);
+}
+
+document.getElementById('uniform-form').addEventListener('submit', async function(e){
+  e.preventDefault();
+  const btn=document.getElementById('btn-enviar'),txt=document.getElementById('btn-text'),spin=document.getElementById('spinner');
+  btn.disabled=true; txt.style.display='none'; spin.style.display='block';
+
+  const items = Object.values(selected).map(({item,qty})=>({
+    codigo: item.code, uniforme: item.name, cantidad: qty
+  }));
+
+  const payload = {
+    fecha: new Date().toLocaleString('es-AR'),
+    legajo: val('legajo'), dni: val('dni'),
+    nombre: val('nombre'), apellido: val('apellido'),
+    items
+  };
+
+  try {
+    await fetch(SCRIPT_URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    document.getElementById('uniform-form').style.display='none';
+    document.getElementById('success-screen').style.display='block';
+  } catch(err) {
+    alert('❌ Error al enviar. Verificá tu conexión e intentá de nuevo.');
+    btn.disabled=false; txt.style.display='inline'; spin.style.display='none';
+  }
+});
+
+function resetForm(){
+  document.getElementById('uniform-form').reset();
+  document.getElementById('uniform-form').style.display='block';
+  document.getElementById('success-screen').style.display='none';
+  document.getElementById('btn-enviar').disabled=false;
+  document.getElementById('btn-text').style.display='inline';
+  document.getElementById('spinner').style.display='none';
+  selected={};
+  renderCatalog();
+  renderSelected();
+  setStep(1);
+}
+</script>
+</body>
+</html>
